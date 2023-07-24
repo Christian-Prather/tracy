@@ -27,9 +27,11 @@ env:
   MAJOR: ${{ github.event.inputs.MAJOR}}
   MINOR: ${{ github.event.inputs.MINOR}}
   PATCH: ${{ github.event.inputs.PATCH}}
+  VERSION: ${MAJOR}.${MINOR}.${PATCH}
 
 jobs:
-  Release:
+  # Update the version file
+  Version:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Branch
@@ -43,19 +45,37 @@ jobs:
           cd ${{env.REPO}}/deployment-scripts
           ./deploy.sh
         shell: bash
-        # env:
-          # ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  # Run latex build
+  Docs:
+    needs: Version
+    uses: ./.github/workflows/latex.yml
 
+  # Run gcc build
+  GCC:
+    needs: Version
+    uses: ./.github/workflows/gcc.yml
 
-        # Run latex build
-        # Run gcc build
-        # Run MSVC build
-        # Commit changes as "Relase commit"
+  # Run MSVC build
+  MSCV:
+    needs: Version
+    uses: ./.github/workflows/msvc.yml
+  
+  # Commit changes as "Relase commit"
+  Commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Commit docs to docs repo
+        run: |
+          cd ${{env.REPO}}
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -am "Updated Version"
+          echo ${{ github.ref_name }}
+          git tag -a ${{env.VERSION}} -m "Release for ${{env.VERSION}}"
+
         # Tag
         # Release is left to be manual since user will want to fill out 
         # all information they want
 
 
-  Docs:
-    needs: Release
-    uses: ./.github/workflows/latex.yml
