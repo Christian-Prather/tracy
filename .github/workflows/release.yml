@@ -40,12 +40,12 @@ jobs:
 
       - name: Update Version file
         run: |
-          cd ${{env.REPO}}
-          ./deployment-scripts/deploy.sh
+          cd ${{env.REPO}}/deployment-scripts
+          ./deploy.sh
         shell: bash
-        env:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          
+        # env:
+          # ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
 
         # Run latex build
         # Run gcc build
