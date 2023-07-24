@@ -1,0 +1,81 @@
+# TODO clp: turn the other actions into docker image since its re downloading packages
+# TODO clp: figure out how to have the docs and bins build at on master but not when the release is made
+# It could be that its manually ran in this action and then taged and when the changes made here are merged in the actions run again
+# This is a waste of build minutes but wouldnt hurt anything 
+# Could change the other actions to be on pull requests and nightly and manually? 
+
+name: Create a Release
+
+on:
+  # pull_request:
+  #   branches:
+  #     - "master"
+  workflow_dispatch:
+    inputs:
+      MAJOR:
+        type: string
+        description: "The major version for the release"
+      MINOR:
+        type: string
+        description: "The minor version for the release"
+      PATCH:
+        type: string
+        description: "The patch version for the release"
+
+env:
+  REPO: ${{github.event.repository.name}}
+  MAJOR: ${{ github.event.inputs.MAJOR}}
+  MINOR: ${{ github.event.inputs.MINOR}}
+  PATCH: ${{ github.event.inputs.PATCH}}
+  VERSION: ${MAJOR}.${MINOR}.${PATCH}
+
+jobs:
+  # Update the version file
+  Version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+          path: ${{env.REPO}}
+
+      - name: Update Version file
+        run: |
+          cd ${{env.REPO}}/deployment-scripts
+          ./deploy.sh
+        shell: bash
+  # Run latex build
+  Docs:
+    needs: Version
+    uses: ./.github/workflows/latex.yml
+
+  # Run gcc build
+  GCC:
+    needs: Version
+    uses: ./.github/workflows/gcc.yml
+
+  # Run MSVC build
+  MSCV:
+    needs: Version
+    uses: ./.github/workflows/msvc.yml
+  
+  # Commit changes as "Relase commit"
+  Commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Commit docs to docs repo
+        run: |
+          cd ${{env.REPO}}
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -am "Updated Version"
+          echo ${{ github.ref_name }}
+          git tag -a ${{env.VERSION}} -m "Release for ${{env.VERSION}}"
+
+        # Tag
+        # Release is left to be manual since user will want to fill out 
+        # all information they want
+
+
